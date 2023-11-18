@@ -31,3 +31,8 @@ int main() {
  printf("\n");
  return 0;
 }
+
+OUTPUT:
+Enter the plaintext: examination
+Enter the key: the
+Encrypted text: dkklvxzgsna
