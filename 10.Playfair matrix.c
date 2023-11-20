@@ -18,3 +18,7 @@ int main() {
 
     return 0;
 }
+
+OUTPUT:
+Approximate number of possible keys: 15511210043330983907819520
+Expressed as a power of 2: 2^84
