@@ -127,3 +127,6 @@ int main() {
 
     return 0;
 }
+
+OUTPUT:
+BM  TP  XN  GX  JY  KY  DS  GF  GL  OG  LX  NX  SY  GK  FA  OE  GY  JO  DG  EW  
