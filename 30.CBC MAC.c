@@ -1,71 +1,63 @@
 #include <stdio.h>
-#define BLOCK_SIZE 64
-// Function to perform left shift on a block
-void leftShift(unsigned char *block, int size) {
-    int i, carry = 0;
+#include <string.h>
+#include <stdlib.h> // Include this header for malloc
 
-    for (i = 0; i < size; i++) {
-        int nextCarry = (block[i] & 0x80) ? 1 : 0; // Check if the leftmost bit is 1
-        block[i] = (block[i] << 1) | carry;
-        carry = nextCarry;
+#define BLOCK_SIZE 16
+
+void xorBlocks(unsigned char *result, const unsigned char *block1, const unsigned char *block2) {
+    for (int i = 0; i < BLOCK_SIZE; i++) {
+        result[i] = block1[i] ^ block2[i];
     }
 }
-// Function to perform XOR with a constant
-void xorWithConstant(unsigned char *block, int size, unsigned char constant) {
-    block[size - 1] ^= constant;
+
+void aesEncrypt(const unsigned char *input, const unsigned char *key, unsigned char *output) {
+    // TODO: Implement your own AES encryption logic here
+    // This is a placeholder and needs to be replaced with a secure AES implementation
 }
 
-// Function to generate CMAC subkeys
-void generateCMACSubkeys(unsigned char *subkey1, unsigned char *subkey2) {
-    // Step 1: Apply the block cipher to a block of 0 bits
-    unsigned char zeroBlock[BLOCK_SIZE / 8] = {0}; // Initialize a block of 0 bits
+void cbcMac(const unsigned char *message, const unsigned char *key, unsigned char *mac, size_t messageSize) {
+    unsigned char iv[BLOCK_SIZE] = {0}; // Initialization vector for CBC
+    unsigned char ciphertext[BLOCK_SIZE];
 
-    // Assuming you have a function named 'blockCipher' to apply the block cipher
-    // blockCipher(zeroBlock, key, encryptedBlock);
+    // Encrypt the one-block message using AES in CBC mode
+    aesEncrypt(message, key, ciphertext);
+    xorBlocks(mac, message, ciphertext);
 
-    // Step 2: Left shift and XOR with constant for subkey1
-    leftShift(zeroBlock, BLOCK_SIZE / 8);
-    xorWithConstant(zeroBlock, BLOCK_SIZE / 8, 0x87); // Constant for a block size of 64 bits
-
-    // Copy the result to subkey1
-    for (int i = 0; i < BLOCK_SIZE / 8; i++) {
-        subkey1[i] = zeroBlock[i];
-    }
-
-    // Step 3: Left shift and XOR with constant for subkey2
-    leftShift(subkey1, BLOCK_SIZE / 8);
-    if (subkey1[0] & 0x80) {
-        xorWithConstant(subkey1, BLOCK_SIZE / 8, 0x1B); // Constant for a block size of 64 bits
-    }
-
-    // Copy the result to subkey2
-    for (int i = 0; i < BLOCK_SIZE / 8; i++) {
-        subkey2[i] = subkey1[i];
-    }
+    // Encrypt the two-block message X || (X ? T) using AES in CBC mode
+    unsigned char twoBlockMessage[2 * BLOCK_SIZE];
+    memcpy(twoBlockMessage, message, BLOCK_SIZE);
+    xorBlocks(twoBlockMessage + BLOCK_SIZE, message, mac);
+    aesEncrypt(twoBlockMessage, key, mac);
 }
 
 int main() {
-    unsigned char subkey1[BLOCK_SIZE / 8];
-    unsigned char subkey2[BLOCK_SIZE / 8];
-
-    generateCMACSubkeys(subkey1, subkey2);
-
-    // Print the generated subkeys
-    printf("Subkey 1: ");
-    for (int i = 1; i < BLOCK_SIZE / 8; i++) {
-        printf("%02x ", subkey1[i]);
+    unsigned char key[BLOCK_SIZE] = {0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6, 0xab, 0xf7, 0x97, 0x7b, 0xab, 0xf7, 0x97, 0x7b};
+        // Read the message from a file
+    FILE *file = fopen("message.txt", "rb");
+    if (file == NULL) {
+        perror("Error opening file");
+        return 1;
+    }
+    fseek(file, 0, SEEK_END);
+    size_t fileSize = ftell(file);
+    fseek(file, 0, SEEK_SET);
+    unsigned char *message = (unsigned char *)malloc(fileSize); // Include a cast
+    if (message == NULL) {
+        perror("Error allocating memory");
+        fclose(file);
+        return 1;
+    }
+    fread(message, 1, fileSize, file);
+    fclose(file);
+    unsigned char mac[BLOCK_SIZE];
+    // Calculate CBC-MAC for the message
+    cbcMac(message, key, mac, fileSize);
+    // Print the resulting MAC
+    printf("CBC-MAC for the message: ");
+    for (int i = 0; i < BLOCK_SIZE; i++) {
+        printf("%02x", mac[i]);
     }
     printf("\n");
-
-    printf("Subkey 2: ");
-    for (int i = 1; i < BLOCK_SIZE / 8; i++) {
-        printf("%02x ", subkey2[i]);
-    }
-    printf("\n");
-
+    free(message); // Don't forget to free allocated memory
     return 0;
 }
-
-OUTPUT:
-Subkey 1: 00 00 00 00 00 00 0e 
-Subkey 2: 00 00 00 00 00 00 0e 
